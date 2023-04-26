@@ -1,0 +1,385 @@
+#!/bin/bash
+
+## Script to create an Envisat interferogram, 
+# simply by defining the two dates from /Geodesy/Envisat/ folder.
+
+# Also define the track we want, and the frame.
+
+# Assume the DEM correction and filtering is required.
+
+## Natalie Forrest
+## 20th January 2023
+
+##############################
+# PRE-PROCESSING
+
+echo "................................................................................................"
+echo "PRE-PROCESSING"
+
+echo "1. Defining parameters."
+
+date1=$1           ## Primary SLC
+date2=$2           ## Secondary SLC
+
+track=$3           ## Track to process, e.g. track143_asc
+frame=$4           ## Frame to process
+
+both=${date1}_${date2}
+output_both=$track/single_ifgs/$both
+
+module load gamma/20201216
+
+echo "2. Processing data $date1 and $date2, for $track and frame $frame."
+
+## 1. Firstly, see if the SLC data has been extracted from the SAR file.
+# 2. If they haven't: extract the data, apply orbits, and move to SLC_orbits file.
+
+## For date 1
+
+if [ ! -f $track/data/SLC_orbits/$date1/$date1.slc ]
+then 
+echo "SLC data for $date1 hasn't been extracted"
+
+## If data doesn't exist, extract, orbits, and move.
+mkdir $track/data/SLC/$date1/
+mkdir $track/data/SLC_orbits/$date1/
+
+echo "2a. Extracting data from ASA_IMS_1P file."
+par_ASAR $track/data/ASA_IMS_1P/ASA_IMS_1PNESA${date1}* $track/data/SLC/$date1/$date1 > $track/data/SLC/$date1/extract_$date1.txt
+
+echo "2b. Moving data to SLC_orbits folder & define variables."
+cp $track/data/SLC/$date1/$date1.VV.SLC $track/data/SLC_orbits/$date1/$date1.slc
+cp $track/data/SLC/$date1/$date1.VV.SLC.par $track/data/SLC_orbits/$date1/$date1.slc.par
+### Define width of the SLC
+widthslc1=`cat $track/data/SLC_orbits/$date1/$date1.slc.par | grep range_samples | awk '{print $2}'`
+
+echo "2c. Applying orbits to SLC data."
+DELFT_vec2 $track/data/SLC_orbits/$date1/$date1.slc.par $nat/Catalogues/ORBITS/ODR.ENVISAT1/eigen-cg03c/ > $track/data/SLC/$date1/extract_$date1.txt
+
+echo "2d. Multi-looking the SLC file."
+# Multi-look the SLC file, using number of range looks of 1, and number of azimuth looks of 5
+multi_look $track/data/SLC_orbits/$date1/$date1.slc $track/data/SLC_orbits/$date1/$date1.slc.par $track/data/SLC_orbits/$date1/$date1.mli $track/data/SLC_orbits/$date1/$date1.mli.par 1 5 > $track/data/SLC_orbits/$date1/mli_$date1.txt
+
+echo "2e. Creating png of MLI."
+# Convert MLI to raster
+raspwr $track/data/SLC_orbits/$date1/$date1.mli $widthslc1 >> $track/data/SLC_orbits/$date1/mli_$date1.txt
+# Convert MLI raster to PNG
+convert $track/data/SLC_orbits/$date1/$date1.mli.bmp $track/data/SLC_orbits/$date1/$date1.mli.png >> $track/data/SLC_orbits/$date1/mli_$date1.txt
+
+else
+echo "SLC data for $date1 has been extracted, moving onto second date."
+fi
+echo "................................................................................................"
+
+## For date 2
+
+if [ ! -f $track/data/SLC_orbits/$date2/$date2.slc ]
+then 
+echo "SLC data for $date2 hasn't been extracted"
+
+## If data doesn't exist, extract, orbits, and move.
+mkdir $track/data/SLC/$date2/
+mkdir $track/data/SLC_orbits/$date2/
+
+echo "3a. Extracting data from ASA_IMS_1P file."
+par_ASAR $track/data/ASA_IMS_1P/ASA_IMS_1PNESA${date2}* $track/data/SLC/$date2/$date2 > $track/data/SLC/$date2/extract_$date2.txt
+
+# For track 50, frame 2799
+#par_ASAR $track/data/ASA_IMS_1P/ASA_IMS_1PNESA${date2}\*1820*.N1 $track/data/SLC/$date2/$date2 > $track/data/SLC/$date2/extract_$date2.txt
+
+ASA_IMS_1PNESA${date2}\*1820*.N1
+
+echo "3b. Moving data to SLC_orbits folder."
+cp $track/data/SLC/$date2/$date2.VV.SLC $track/data/SLC_orbits/$date2/$date2.slc
+cp $track/data/SLC/$date2/$date2.VV.SLC.par $track/data/SLC_orbits/$date2/$date2.slc.par
+### Define width of the SLC
+widthslc2=`cat $track/data/SLC_orbits/$date2/$date2.slc.par | grep range_samples | awk '{print $2}'`
+
+echo "3c. Applying orbits to SLC data."
+DELFT_vec2 $track/data/SLC_orbits/$date2/$date2.slc.par $nat/Catalogues/ORBITS/ODR.ENVISAT1/eigen-cg03c/ > $track/data/SLC/$date2/extract_$date2.txt
+
+echo "3d. Multi-looking the SLC file."
+# Multi-look the SLC file, using number of range looks of 1, and number of azimuth looks of 5
+multi_look $track/data/SLC_orbits/$date2/$date2.slc $track/data/SLC_orbits/$date2/$date2.slc.par $track/data/SLC_orbits/$date2/$date2.mli $track/data/SLC_orbits/$date2/$date2.mli.par 1 5 > $track/data/SLC_orbits/$date2/mli_$date2.txt
+
+echo "3e. Creating png of MLI."
+# Convert MLI to raster
+raspwr $track/data/SLC_orbits/$date2/$date2.mli $widthslc2 >> $track/data/SLC_orbits/$date2/mli_$date2.txt
+# Convert MLI raster to PNG
+convert $track/data/SLC_orbits/$date2/$date2.mli.bmp $track/data/SLC_orbits/$date2/$date2.mli.png >> $track/data/SLC_orbits/$date2/mli_$date2.txt
+
+else
+echo "SLC data for $date2 has been extracted."
+### Define width of the SLC
+widthslc1=`cat $track/data/SLC_orbits/$date1/$date1.slc.par | grep range_samples | awk '{print $2}'`
+widthslc2=`cat $track/data/SLC_orbits/$date2/$date2.slc.par | grep range_samples | awk '{print $2}'`
+
+fi
+
+widthslc1=`cat $track/data/SLC_orbits/$date1/$date1.slc.par | grep range_samples | awk '{print $2}'`
+widthslc2=`cat $track/data/SLC_orbits/$date2/$date2.slc.par | grep range_samples | awk '{print $2}'`
+
+echo "................................................................................................"
+echo "Processed Primary SLC --------- $date1, with a width of $widthslc1 and from Envisat."
+echo "Processed Secondary SLC ------- $date2, with a width of $widthslc2 and from Envisat."
+echo "................................................................................................"
+
+######################## 
+##### Create interferogram
+
+echo "Creating interferogram $both."
+
+echo "1. Create folder for interferogram, and copy the relevant files"
+if [ ! -d $track/$both/ ] #if the interferogram directory exists:
+then 
+echo "Note: $output_both/ doesn't exist. Making now."
+mkdir $track/$both
+
+# Copy date 1 files
+cp $track/data/SLC_orbits/$date1/$date1.slc* $output_both
+cp $track/data/SLC_orbits/$date1/$date1.mli $output_both
+cp $track/data/SLC_orbits/$date1/$date1.mli.p* $output_both
+
+# Copy date 2 files
+cp $track/data/SLC_orbits/$date2/$date2.slc* $output_both
+cp $track/data/SLC_orbits/$date2/$date2.mli $output_both
+cp $track/data/SLC_orbits/$date2/$date2.mli.p* $output_both
+
+echo "2. Generate the offset files between the two SLCs."
+
+## Generate initial offset file
+create_offset $output_both/$date1.slc.par $output_both/$date2.slc.par $output_both/$both.off 1 1 1 0 > $output_both/history.txt
+## First 1: the algorithm for offset estimation is intensity cross-correlation
+## Second & Third 1: number of interferogram range looks & azimuth looks are 1 and 1
+## Zero: Interactive mode is off
+
+## Estimate initial offset with orbital vectors within the parameter file
+init_offset_orbit $output_both/$date1.slc.par $output_both/$date2.slc.par $output_both/$both.off >> $output_both/history.txt
+
+## Estimate initial offset (1): Multi-looked offset
+init_offset $output_both/$date1.slc $output_both/$date2.slc $output_both/$date1.slc.par $output_both/$date2.slc.par $output_both/$both.off 1 5 >> $output_both/history.txt
+ 
+## Estimate initial offset (2): Full resolution update
+init_offset $output_both/$date1.slc $output_both/$date2.slc $output_both/$date1.slc.par $output_both/$date2.slc.par $output_both/$both.off 1 1 >> $output_both/history.txt
+
+## Compute precise orbit & reiterate
+# 128 128: range & azimuth patch size
+# 1: SLC oversampling factor (default is 2)
+# 8 8: number of offset estimates in range & azimuth direction (could be default from offset parameter file)
+# 0.15: cross-correlation threshold
+
+offset_pwr $output_both/$date1.slc $output_both/$date2.slc $output_both/$date1.slc.par $output_both/$date2.slc.par $output_both/$both.off $output_both/offs $output_both/ccp 128 128 $output_both/offsets 1 8 8 0.15 >> $output_both/history.txt
+
+offset_pwr $output_both/$date1.slc $output_both/$date2.slc $output_both/$date1.slc.par $output_both/$date2.slc.par $output_both/$both.off $output_both/offs $output_both/ccp 64 64 $output_both/offsets 1 8 8 0.10 >> $output_both/history.txt
+
+## Generate offsets polynomial & reiterate
+# 0.15: cross-correlation threshold
+# 3: number of polynomial parameters (options: 1,3,4,6)
+offset_fit $output_both/offs $output_both/ccp $output_both/$both.off $output_both/coffs $output_both/coffsets 0.15 3 0 >> $output_both/history.txt
+offset_fit $output_both/offs $output_both/ccp $output_both/$both.off $output_both/coffs $output_both/coffsets 0.1 3 0 >> $output_both/history.txt
+
+echo "3. Resample second SLC to primary SLC geometry."
+
+# Resample second SLC to first SLC geometry
+SLC_interp $output_both/$date2.slc $output_both/$date1.slc.par $output_both/$date2.slc.par $output_both/$both.off $output_both/$date2.rslc $output_both/$date2.rslc.par >> $output_both/history.txt
+
+# Multi-look resampled SLC.
+multi_look $output_both/$date2.rslc $output_both/$date2.rslc.par $output_both/$date2.rmli $output_both/$date2.rmli.par 1 5 >> $output_both/history.txt
+
+# Convert to raster and png
+raspwr $output_both/$date2.rmli $widthslc1 >> $output_both/history.txt
+convert $output_both/$date2.rmli.bmp $output_both/$date2.rmli.png >> $output_both/history.txt
+
+echo "4. Generate interferogram."
+SLC_intf $output_both/$date1.slc $output_both/$date2.rslc $output_both/$date1.slc.par $output_both/$date2.rslc.par $output_both/$both.off $output_both/$both.int 1 5 - - 1 1 >> $output_both/history.txt
+
+rasmph $output_both/$both.int $widthslc1 >> $output_both/history.txt
+convert $output_both/$both.int.bmp $output_both/$both.int.png >> $output_both/history.txt
+
+else
+echo "Note: $output_both & first-pass interferogram exists already."
+fi
+
+echo "5. Calculate interferometric baselines."
+
+## If baseline hasn't yet been calculated: (Nested if 12)
+if [ ! -f $output_both/$both.flt ]
+then
+
+#   echo 2. Estimating interferometric baseline
+## 1 Estimate the baseline using the orbital information. 
+## FFT is estimated in window of 1024x1024 pixels.
+base_init $output_both/$date1.slc.par $output_both/$date2.rslc.par $output_both/$both.off $output_both/$both.int $output_both/$both.base 2 1024 1024 >> $output_both/history.txt
+
+# John: 
+# base_init $output_both/$date1.rslc.par $output_both/$date2.rslc.par $output_both/$both.off $output_both/$both.int $output_both/$both.base 0
+
+#   echo 3. Estimating perpendicular baseline.
+## 2 Displays how the parallel and perpendicular component of the baseline changes 
+## both along- and across-track
+base_perp $output_both/$both.base $output_both/$date1.slc.par $output_both/$both.off >> $output_both/$both.base.perp
+
+# However, when incorporating topographic phase, removing curved Earth phase trend is performed later
+
+#   echo "4. Calculating and removing curved Earth phase trend, takes about 60 seconds)."
+##### Curved Earth phase trend removal ("flattening")
+## 3 Calculate the phase trend expected for a smooth curved earth
+ph_slope_base $output_both/$both.int $output_both/$date1.slc.par $output_both/$both.off $output_both/$both.base $output_both/$both.flt >> $output_both/history.txt
+
+#   echo 5. Remove flat earth trend.
+#   sub_phase $output_both/$both.flt $output_both/$both.sim_unw $output_both/$both.diff_par $output_both/$both.diff_flt 1 >> $output_both/history.txt
+
+#   echo 6. Converting flattened interferogram to PNG.
+
+rasmph $output_both/$both.flt $widthslc1 >> $output_both/history.txt
+convert $output_both/$both.flt.bmp $output_both/$both.flt.png >> $output_both/history.txt
+
+else
+echo "Baseline files already calculated."
+fi
+
+echo "................................................................................................"
+echo "GEOCODING MLI AND DEM PREPARATION"
+
+echo "1. Calculate terrain-geocoding lookup table."
+
+## Calculate terrain-geocoding lookup table and DEM derived data products
+gc_map1 $output_both/$date1.mli.par - data/topo/grevena.dem_par data/topo/grevena.dem $output_both/EQA.dem_par $output_both/EQA.dem $output_both/$date1.lt 2 2 $output_both/$date1.sim_sar $output_both/u $output_both/v $output_both/inc $output_both/psi $output_both/pix $output_both/$date1.ls_map 8 2 >> $output_both/history.txt
+
+echo "1b. Defining width of the DEM:"
+width_dem=`cat $output_both/EQA.dem_par | grep width | awk '{print $2}'`
+echo $width_dem pixels.
+
+echo "2. Calculate terrain correction."
+
+# Refine the geocoding lookup table, by calculating terrain-based normalisation factors
+# pix_sigma0 pix_gamma0
+pixel_area $output_both/$date1.mli.par $output_both/EQA.dem_par $output_both/EQA.dem $output_both/$date1.lt $output_both/$date1.ls_map $output_both/inc $output_both/pix_sigma0 $output_both/pix_gamma0 >> $output_both/history.txt
+
+### Correction to geocoding table based upon simulated and real MLI image
+
+echo "3. Correcting geocoding table using sim_sar."
+create_diff_par $output_both/$date1.mli.par - $output_both/$date1.diff_par 1 0 >> $output_both/history.txt
+
+offset_pwrm $output_both/pix_sigma0 $output_both/$date1.mli $output_both/$date1.diff_par $output_both/offs $output_both/cpp 256 256 $output_both/offsets 2 64 64 0.5 >> $output_both/history.txt
+
+offset_fitm $output_both/offs $output_both/cpp $output_both/$date1.diff_par $output_both/coffs $output_both/coffsets 0.5 1 >> $output_both/history.txt
+
+gc_map_fine $output_both/$date1.lt $width_dem $output_both/$date1.diff_par $output_both/$date1.lt_fine 1 >> $output_both/history.txt
+
+# Geocode mli image using lookup table
+echo "4. Geocoding MLI image with lookup table."
+geocode_back $output_both/$date1.mli $widthslc1 $output_both/$date1.lt_fine $output_both/EQA.mli $width_dem - 2 0 >> $output_both/history.txt
+
+### Transforming DEM heights into SAR Geometry of MLI
+echo "5. Transform DEM data into SAR geometry." #5335
+geocode $output_both/$date1.lt_fine $output_both/EQA.dem $width_dem $output_both/$date1.hgt $widthslc1 - 2 0 >> $output_both/history.txt
+
+#dishgt $output_both/$date1.hgt $output_both/$date1.mli $widthslc1
+
+# Geocode back DEM
+echo "6. Geocode back DEM."
+geocode_back $output_both/$date1.hgt $widthslc1 $output_both/$date1.lt_fine $output_both/$date1.hgt.geo $width_dem - 0 0 >> $output_both/history.txt
+
+echo "................................................................................................"
+###################################
+## 7. I then remove the terrain correction
+echo "CALCULATE BASELINES"
+
+echo 1. Estimating interferometric baseline
+## 1 Estimate the baseline using the orbital information. 
+## FFT is estimated in window of 1024x1024 pixels.
+base_init $output_both/$date1.slc.par $output_both/$date2.rslc.par $output_both/$both.off $output_both/$both.int $output_both/$both.base 2 1024 1024 >> $output_both/history.txt
+
+echo 2. Estimating perpendicular baseline.
+## 2 Displays how the parallel and perpendicular component of the baseline changes 
+## both along- and across-track
+base_perp $output_both/$both.base $output_both/$date1.slc.par $output_both/$both.off >> $output_both/$both.base.perp
+
+echo "................................................................................................"
+echo "REMOVE TERRAIN CORRECTION"
+
+# Simulate unwrapped topographic phase
+echo "1. Simulate unwrapped topographic phase."
+phase_sim $output_both/$date1.slc.par $output_both/$both.off $output_both/$both.base $output_both/$date1.hgt $output_both/$both.sim_unw 0 0 >> $output_both/history.txt
+
+# Parameter file for ifgm
+echo "2. Create ifg parameter file."
+create_diff_par $output_both/$both.off - $output_both/$both.diff_par 0 0 >> $output_both/history.txt
+
+# Subtract topographic phase
+echo "3. Subtract topographic phase."
+sub_phase $output_both/$both.int $output_both/$both.sim_unw $output_both/$both.diff_par $output_both/$both.diff_int 1 >> $output_both/history.txt
+
+# Removal of linear phase trends
+echo "4. Subtract linear phase trends."
+base_init $output_both/$date1.slc.par $output_both/$date2.rslc.par $output_both/$both.off $output_both/$both.diff_int $output_both/$both.base_res 4 >> $output_both/history.txt
+
+# Improved baseline
+echo "5. Improving baseline."
+base_add $output_both/$both.base $output_both/$both.base_res $output_both/$both.base1 1 >> $output_both/history.txt
+
+# Generate unwrapped phase with new baseline
+echo "6. Generate unwrapped phase with new baseline."
+phase_sim $output_both/$date1.slc.par $output_both/$both.off $output_both/$both.base1 $output_both/$date1.hgt $output_both/$both.sim_unw1 0 0 - - >> $output_both/history.txt
+
+# Subtract new simulated phase 
+echo "7. Subtract new simulated phase."
+sub_phase $output_both/$both.int $output_both/$both.sim_unw1 $output_both/$both.diff_par $output_both/$both.diff_int1 1 0 >> $output_both/history.txt
+
+echo "8. Convert to PNG."
+rasmph $output_both/$both.diff_int1 $widthslc1 >> $output_both/history.txt
+convert $output_both/$both.diff_int1.bmp $output_both/$both.diff_int1.png >> $output_both/history.txt
+
+############################################################
+# GEOCODE INTERFEROGRAM
+echo "................................................................................................"
+echo "GEOCODE INTERFEROGRAM"
+
+## This is the only line that doesn't work?? Fixed Nov 2022 (widthdem was written, not width_dem)
+echo "1. Geocode back to map geometry"
+geocode_back $output_both/$both.diff_int1 $widthslc1 $output_both/$date1.lt_fine $output_both/$both.diff.geo $width_dem - 0 1 >> $output_both/history.txt
+
+echo "2. Save as PNG"
+# Output raster
+rasmph $output_both/$both.diff.geo $width_dem >> $output_both/history.txt
+
+# Convert to png with transparency of black masked out
+convert $output_both/$both.diff.geo.bmp -transparent black $output_both/$both.diff.geo.png >> $output_both/history.txt
+
+#### SKIP THIS SECTION IF you don't want to filter (otherwise takes like 10 mins)
+
+#############
+# FILTERING #
+#############
+
+echo "3. Filter in radar geometry 1st time and save as PNG (takes about 3 minutes)"
+adf $output_both/$both.diff_int1 $output_both/$both.diff_sm $output_both/$both.smcc $widthslc1 0.3 128 7 - 0 - 0.2 >> $output_both/history.txt
+rasmph_pwr $output_both/$both.diff_sm $output_both/$date1.mli $widthslc1 - - 1 1 - $output_both/$both.diff_sm.bmp >> $output_both/history.txt
+convert $output_both/$both.diff_sm.bmp $output_both/$both.diff_sm.png >> $output_both/history.txt
+
+echo "4. Filter 2nd time and save as PNG"
+# 2nd Filter
+adf $output_both/$both.diff_sm $output_both/$both.diff_sm2 $output_both/$both.smcc2 $widthslc1 0.4 64 7 - 0 - 0.2 >> $output_both/history.txt
+rasmph_pwr $output_both/$both.diff_sm2 $output_both/$date1.mli $widthslc1 - - 1 1 - $output_both/$both.diff_sm2.bmp >> $output_both/history.txt
+convert $output_both/$both.diff_sm2.bmp $output_both/$both.diff_sm2.png >> $output_both/history.txt
+
+echo "5. Filter 3rd time and save as PNG"
+# 3rd Filter
+adf $output_both/$both.diff_sm2 $output_both/$both.diff_sm3 $output_both/$both.smcc3 $widthslc1 0.5 32 7 - 0 - 0.2 >> $output_both/history.txt
+
+# Output raster
+rasmph_pwr $output_both/$both.diff_sm3 $output_both/$date1.mli $widthslc1 - - 1 1 - $output_both/$both.diff_sm3.bmp >> $output_both/history.txt
+convert $output_both/$both.diff_sm3.bmp $output_both/$both.diff_sm3.png >> $output_both/history.txt
+
+########################
+# GEOCODE Filtered Ifgm - back in normal map geometry
+
+echo "6. Geocode back the filtered interferogram and save as PNG"
+geocode_back $output_both/$both.diff_sm3 $widthslc1 $output_both/$date1.lt_fine $output_both/$both.diff_sm.geo $width_dem - 0 1 >> $output_both/history.txt
+#dismph $output_both/$both.diff_sm.geo $width_dem & >> $output_both/history.txt
+
+rasmph $output_both/$both.diff_sm.geo $width_dem >> $output_both/history.txt
+convert $output_both/$both.diff_sm.geo.bmp $output_both/$both.diff_sm.geo.png >> $output_both/history.txt
+
+echo "Finished! :)"
