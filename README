@@ -1,0 +1,87 @@
+###################################################################
+## Scripts to create an ERS or Envisat interferogram using Gamma ##
+## For single and batch processing                               ##
+###################################################################
+
+Natalie Forrest
+26th April 2023
+
+Scripts created in collaboration with John Elliott, Megan Udy, Eva Zand, Andrew Watson, Jack McGrath & Edna Dualeh
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Hello, so you want to make an interferogram using ERS (1991-2011) or Envisat (2002-2012) data, using Gamma software?
+You're in the right place!
+
+There are several steps involved with creating interferograms using Gamma, and it slightly depends on the output you desire. My motivation to create interferograms was to prepare a series of them for StaMPS (https://github.com/dbekaert/StaMPS). However, I started off by creating individual interferograms, which is an important place to start to understand how to make an ifg. 
+
+The main difference with my looped scripts for StaMPS is that all SLCs were resampled to a "super-primary" SLC for the Small Baseline approach, and therefore I didn't need to do further resampling when creating the interferograms.
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+*** The basics on how to make an interferogram ***
+
+Loosely described in most up to date version, GAMMA_makeifg_envisat.sh
+Also in bin/GAMMA_resample_batch.sh and bin/GAMMA_makeifg_single.sh
+
+This is a basic overview and there are many more whistles and bells you can add.
+Note: ERS & Envisat have basically the same processing steps, once SLCs have been created. Their main difference is that they begin in different file formats.
+
+1. Download SAR (SAR_IMS_1P) & orbital data from the ESA website in the desired format for specific track & frame:
+
+	Collection: https://esar-ds.eo.esa.int/oads/access/collection
+
+	ERS: https://esar-ds.eo.esa.int/oads/access/collection/SAR_IMS_1P
+
+	Envisat: https://esar-ds.eo.esa.int/oads/access/collection/ASA_IMS_1P
+
+	Orbital data: http://deos.tudelft.nl/ers/precorbs/orbits/
+
+2. Define the primary and secondary dates for the interferograms, and if they are ERS-1 or 2. 
+3. Extract data into slc and slc parameter files, and apply orbital parameters.
+4. Generate best-fit offset and coregistration files between the primary and secondary SLC geometries.
+5. Resample the secondary SLC to the primary geometry.
+6. Caclulate interferogram from co-registered SLC image data.
+7. Tidy up, by estimating interferometric and perpendicular baselines, curved Earth phase trend, and flat earth trend.
+8. Complete the DEM correction (a wee bit complicated).
+9. Adaptive interferogram filter using the power spectral density.
+10. Convert interferogram from radar to map geometry.
+11. Generate coherence files.
+12. Unwrap interferogram in radar geometry, the convert to map geometry.
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+*** Making a series of interferograms for StaMPS ***
+
+ERS Scripts used:
+
+	GAMMA_resample_loop.sh - For loop to go through SLC for each date
+	GAMMA_resample_single.sh
+	GAMMA_makeifg_loop.sh - For loop to go through each interferogram
+	GAMMA_makeifg_single.sh
+	BASH_move2stamps.sh - script to move relevant files into folder format ready for StaMPS processing
+
+Envisat Scripts used:
+	
+	GAMMA_1resample_loop_envisat.sh
+	GAMMA_1resample_single_envisat.sh
+	GAMMA_2makeifg_loop_envisat.sh
+	GAMMA_2makeifg_single_envisat.sh
+
+Folder format: feel free to edit/make more efficient or hardcode new folder locations.
+
+	bin:				(all scripts)
+ 	data:
+		input			(list of dates and interferograms)
+		SAR			(SAR or ASAR files downloaded from ESA) # track & frame may also need to be defined
+		SLC 			(files extracted from SAR)
+		SLC_noorbits 		(files names edited before orbits applied) # arguably inefficient, removed for Envisat
+		SLC_orbits		(files with orbits applied)
+		topo			(topographic files for geocoding)
+
+	output_rslc: 			(all useful resampled files, rslc rmli and parameter files)
+	output_other:			(other files generated during resampling)
+	output_ifg:			(files generated during interferogram creation)
+	StaMPS:				(files ready to use in StaMPS)	
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Good luck!
