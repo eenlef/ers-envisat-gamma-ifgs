@@ -1,6 +1,6 @@
 #!/bin/bash
 
-## Script to create resampled SLCs and form interferogram
+## Script to create resampled ERS SLCs and form interferogram
 
 # This script is a batch process for generating an interferogram between two resampled SLCs.
 
