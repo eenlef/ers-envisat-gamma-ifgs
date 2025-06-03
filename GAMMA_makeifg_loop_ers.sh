@@ -1,6 +1,6 @@
 #!/bin/bash
 
-## Script to create resampled interferograms for StaMPS in a loop.
+## Script to create resampled ERS interferograms for StaMPS in a loop.
 # Resampling all the SLCs to one common geometry - 19970905
 
 # Start from 1992/05/05 to 1999/10/14
